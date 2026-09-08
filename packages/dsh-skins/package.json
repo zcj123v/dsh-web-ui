@@ -35,8 +35,5 @@
   ],
   "publishConfig": {
     "access": "public"
-  },
-  "dependencies": {
-    "@neystan/dsh-client-ui-skin-center": "workspace:*"
   }
 }

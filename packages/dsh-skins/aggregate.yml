@@ -7,5 +7,6 @@
 # 因此这里只保留 skin-center（patch 行 ui-skin-center 的宿主）。
 patchFrom:
   - ../skins/skin-center
+# deps 刻意为空：tarball 安装场景下 workspace:* 会被 pnpm 解析为 registry 范围而 404，
+# skin-center 作为 profile 顶层依赖单独安装，patchFrom 的 insert 按包名解析不受影响。
 deps:
-  - ../skins/skin-center
