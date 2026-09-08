@@ -1,7 +1,7 @@
 {
   "name": "@neystan/dsh-client-ui-web-ui-settings",
   "description": "Web UI plugin group for the dsh settings page: one card that hosts the dsh-web-ui family plugins' enable switches and configuration forms.",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -50,7 +50,7 @@
     "@deepseek-ai/dsh-api-remotes": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "^0.1.2-rc.1",
     "@types/node": "^22.20.0",
     "vitest": "^4.1.1",
     "@deepseek-ai/cordis": "^4.0.1",

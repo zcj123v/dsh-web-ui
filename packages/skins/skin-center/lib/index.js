@@ -1,5 +1,4 @@
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "schemastery";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
@@ -1317,9 +1316,9 @@ const inject = ["webServer"];
 * skin center. The browser half spells the same string so it can bind the
 * scope without depending on this Host package.
 */
-const SKIN_BACKGROUND_NAMESPACE = settingsNamespace("skin-background");
+const SKIN_BACKGROUND_NAMESPACE = "skin-background";
 /** Settings namespace for the compact official-default theme editor. */
-const CUSTOM_THEME_NAMESPACE = settingsNamespace(CUSTOM_THEME_NS);
+const CUSTOM_THEME_NAMESPACE = CUSTOM_THEME_NS;
 const PaletteConfigSchema = z.object({
 	accent: z.string().pattern(/^#[0-9A-F]{6}$/),
 	background: z.string().pattern(/^#[0-9A-F]{6}$/),
@@ -1353,13 +1352,15 @@ const SkinBackgroundConfigSchema = z.object({
 * @param ctx - cordis context.
 */
 function apply(ctx) {
-	installSettingsSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
-		setSource: () => {},
-		onChange: () => {}
-	});
-	installSettingsSection(ctx, CUSTOM_THEME_NAMESPACE, CustomThemeConfigSchema, {}, {
-		setSource: () => {},
-		onChange: () => {}
+	ctx.inject(["settings"], (sctx) => {
+		sctx.settings.installSection(ctx, SKIN_BACKGROUND_NAMESPACE, SkinBackgroundConfigSchema, {}, {
+			setSource: () => {},
+			onChange: () => {}
+		});
+		sctx.settings.installSection(ctx, CUSTOM_THEME_NAMESPACE, CustomThemeConfigSchema, {}, {
+			setSource: () => {},
+			onChange: () => {}
+		});
 	});
 	let backgrounds;
 	try {

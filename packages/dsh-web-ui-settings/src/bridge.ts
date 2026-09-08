@@ -12,8 +12,8 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { SettingsNamespace, SettingsDescriptor, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
-import { SettingsConflictError, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsDescriptor, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
+import { SettingsConflictError } from '@deepseek-ai/dsh-settings'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { composeAllowlist, extractWebSettingsNamespaces } from './allowlist.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from './protocol.ts'
@@ -147,7 +147,7 @@ export function makeBridgeHandlers(deps: BridgeDeps): BridgeHandlers {
       }
       const expectedRevision = typeof body.expectedRevision === 'number' ? body.expectedRevision : undefined
       try {
-        await deps.settings.mutate(settingsNamespace(ns) as SettingsNamespace, body.ops as SettingsPathOp[], expectedRevision)
+        await deps.settings.mutate(ns, body.ops as SettingsPathOp[], expectedRevision)
       } catch (error) {
         return failureOf(error)
       }

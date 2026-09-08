@@ -14,7 +14,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import z from 'schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -33,7 +33,7 @@ export const name = 'task-board'
 export const inject = ['webServer', 'tools', 'systemPrompt', 'agents', 'agentPresets', 'workspaceRegistry', 'settings']
 
 /** Settings namespace of the board's announcement capability. */
-export const TASK_BOARD_SETTINGS_NAMESPACE = settingsNamespace('task-board')
+export const TASK_BOARD_SETTINGS_NAMESPACE = 'task-board' as const
 
 /** Plugin config, validated by the same-named schemastery schema. */
 export interface Config {
@@ -191,7 +191,7 @@ export function apply(ctx: Context, config?: Config): void {
     void runner.ensureDispatcherSession()
   }
 
-  installSettingsSection(ctx, TASK_BOARD_SETTINGS_NAMESPACE, Config, config ?? {}, {
+  ctx.settings.installSection(ctx, TASK_BOARD_SETTINGS_NAMESPACE, Config, config ?? {}, {
     setSource: (source) => {
       current = source
       sync()

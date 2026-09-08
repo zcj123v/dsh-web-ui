@@ -8,7 +8,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from 'schemastery'
 import { PetService, PET_SETTINGS_NAMESPACE, type PetConfig, type PetSettingsSection } from './service.ts'
@@ -128,12 +128,16 @@ export function apply(ctx: Context, config: PetConfig = {}): void {
     },
     'pet: routes',
   )
-  installSettingsSection(ctx, settingsNamespace(PET_SETTINGS_NAMESPACE), PET_SETTINGS_SCHEMA, base, {
-    setSource: (source) => { current = source },
-    onChange: () => {
-      const section = current()
-      service.applySettingsSection(section)
-      service.setEnabled(section.enabled ?? true)
-    },
+  // Optional-settings wiring: installSection only when a settings service is
+  // mounted, mirroring the old helper's optional-inject semantics.
+  ctx.inject(['settings'], (sctx) => {
+    sctx.settings.installSection(ctx, PET_SETTINGS_NAMESPACE, PET_SETTINGS_SCHEMA, base, {
+      setSource: (source) => { current = source },
+      onChange: () => {
+        const section = current()
+        service.applySettingsSection(section)
+        service.setEnabled(section.enabled ?? true)
+      },
+    })
   })
 }

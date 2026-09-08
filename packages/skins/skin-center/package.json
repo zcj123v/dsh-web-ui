@@ -1,7 +1,7 @@
 {
   "name": "@neystan/dsh-client-ui-skin-center",
   "description": "In-GUI skin center for dsh web with ten bundled skins, an independent editable custom theme, live no-refresh try-on, global backgrounds, and one-click persisted apply.",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -49,7 +49,7 @@
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-theme": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-settings": "^0.1.2-rc.1"
   },
   "files": [
     "lib",
