@@ -23,9 +23,6 @@
     "url": "https://github.com/neystan/dsh-web-ui.git",
     "directory": "packages/dsh-skins"
   },
-  "dependencies": {
-    "@neystan/dsh-client-ui-skin-center": "workspace:*"
-  },
   "author": {
     "name": "neystan",
     "url": "https://github.com/neystan"
