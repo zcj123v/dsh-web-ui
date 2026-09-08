@@ -67,6 +67,18 @@ const GIT_POLL_MAX_BACKOFF_MS = GIT_POLL_MS
  * devices. The socket address is authoritative; X-Forwarded-For is never
  * trusted (the family fence).
  */
+/**
+ * 部署方域名入口（经 WG 内 OpenResty 反代 + SSH 隧道到达节点 loopback）。
+ * 这些 Host 视同可信；socket 地址检查与 sec-fetch-site 检查仍然生效，
+ * 只有 socket 确为 loopback 且请求非 cross-site 时才可能放行。
+ */
+const TRUSTED_DEPLOY_HOSTNAMES = new Set([
+  'dsh.zcj123v.online',
+  'dsh-mac.zcj123v.online',
+  'dsh-n7.zcj123v.online',
+  'dsh-n9.zcj123v.online',
+])
+
 function isLoopbackRequest(request: IncomingMessage): boolean {
   const address = request.socket.remoteAddress
   if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') return false
@@ -78,7 +90,8 @@ function isLoopbackRequest(request: IncomingMessage): boolean {
   } catch {
     return false
   }
-  if (hostUrl.hostname !== '127.0.0.1' && hostUrl.hostname !== 'localhost' && hostUrl.hostname !== '[::1]') return false
+  if (hostUrl.hostname !== '127.0.0.1' && hostUrl.hostname !== 'localhost' && hostUrl.hostname !== '[::1]'
+    && !TRUSTED_DEPLOY_HOSTNAMES.has(hostUrl.hostname)) return false
   if (request.headers['sec-fetch-site'] === 'cross-site') return false
   const origin = request.headers.origin
   if (origin === undefined) return true

@@ -337,6 +337,55 @@ describe('skin-center routes', () => {
     expect(response.status).toBe(405)
   })
 
+  it('accepts a trusted deploy hostname with a same-origin marker (SSH tunnel form)', async () => {
+    const { run, calls } = stubRunner([
+      { args: ['use', 'qq98'], out: 'wrote patch\n' },
+      { args: ['current'], out: 'qq98\n' },
+    ])
+    const server = await serve(makeSkinCenterRoutes({ run }))
+    const response = await call(server.port, 'POST', `${SKIN_CENTER_API_PREFIX}/apply`, {
+      body: { skin: 'qq98' },
+      headers: {
+        host: 'dsh.zcj123v.online',
+        'sec-fetch-site': 'same-origin',
+        origin: 'https://dsh.zcj123v.online',
+      },
+    })
+    await server.close()
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ ok: true, active: 'qq98', message: 'wrote patch' })
+    expect(calls).toEqual([['use', 'qq98'], ['current']])
+  })
+
+  it('accepts every trusted deploy hostname on the loopback-gated background DELETE', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'skin-center-routes-'))
+    const backgrounds = new BackgroundAssetStore(root)
+    const server = await serve(makeSkinCenterRoutes({ run: stubRunner([]).run, backgrounds }))
+    const upload = await call(server.port, 'POST', `${SKIN_CENTER_API_PREFIX}/background`, {
+      rawBody: backgroundWebP(),
+      headers: { 'content-type': 'image/webp' },
+    })
+    const revision = String(upload.body.revision)
+    const removed = await call(server.port, 'DELETE', `${SKIN_CENTER_API_PREFIX}/background/${revision}.webp`, {
+      headers: { host: 'dsh-mac.zcj123v.online' },
+    })
+    await server.close()
+    expect(removed.status).toBe(200)
+    expect(removed.body).toEqual({ ok: true, deleted: true })
+  })
+
+  it('still 403s cross-site requests carrying a trusted deploy hostname', async () => {
+    const { run } = stubRunner([])
+    const server = await serve(makeSkinCenterRoutes({ run }))
+    const response = await call(server.port, 'POST', `${SKIN_CENTER_API_PREFIX}/apply`, {
+      body: { skin: 'qq98' },
+      headers: { host: 'dsh.zcj123v.online', 'sec-fetch-site': 'cross-site' },
+    })
+    await server.close()
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ ok: false, error: 'cross-site-request-rejected' })
+  })
+
   it('GET /bundle/<id> serves a real skin client bundle as JavaScript', async () => {
     const { run } = stubRunner([])
     const server = await serve(makeSkinCenterRoutes({ run }))

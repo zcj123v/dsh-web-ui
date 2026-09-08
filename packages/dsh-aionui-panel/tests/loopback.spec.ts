@@ -29,6 +29,8 @@ interface RequestOptions {
   method?: string
   remoteAddress?: string
   host?: string
+  origin?: string
+  secFetchSite?: string
   body?: string
   on?: (event: string, handler: () => void) => void
 }
@@ -41,6 +43,8 @@ function fakeRequest(url: string, options: RequestOptions = {}): Record<string, 
     headers: {
       host: options.host ?? '127.0.0.1:3000',
       'content-type': 'application/json',
+      ...(options.origin === undefined ? {} : { origin: options.origin }),
+      ...(options.secFetchSite === undefined ? {} : { 'sec-fetch-site': options.secFetchSite }),
     },
     socket: { remoteAddress: options.remoteAddress ?? '127.0.0.1' },
     on: options.on ?? vi.fn(),
@@ -123,6 +127,72 @@ describe('/aionui-panel loopback fence', () => {
 
     expect(result.status).toBe(403)
     expect(result.headers['content-type']).toBe('application/json; charset=utf-8')
+    expect(JSON.parse(result.body)).toEqual({ error: 'forbidden: loopback-only' })
+    expect(list).not.toHaveBeenCalled()
+  })
+
+  it('serves a trusted deploy hostname over a loopback socket (SSH tunnel form)', async () => {
+    const list = vi.fn(async () => ({ root: '/w', entries: [] }))
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, { list } as never, { status: async () => null } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const result = await drive(prefix.handler, '/aionui-panel/list', {
+      host: 'dsh.zcj123v.online',
+      body: JSON.stringify({ root: '/w', path: '' }),
+    })
+
+    expect(result.status).toBe(200)
+    expect(JSON.parse(result.body)).toEqual({ ok: true, value: { root: '/w', entries: [] } })
+    expect(list).toHaveBeenCalledWith('/w', '')
+  })
+
+  it('serves every trusted deploy hostname with a matching same-origin marker', async () => {
+    const list = vi.fn(async () => ({ root: '/w', entries: [] }))
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, { list } as never, { status: async () => null } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    for (const hostname of ['dsh.zcj123v.online', 'dsh-mac.zcj123v.online', 'dsh-n7.zcj123v.online', 'dsh-n9.zcj123v.online']) {
+      const result = await drive(prefix.handler, '/aionui-panel/list', {
+        host: hostname,
+        origin: `https://${hostname}`,
+        body: JSON.stringify({ root: '/w', path: '' }),
+      })
+      expect(result.status).toBe(200)
+    }
+  })
+
+  it('still 403s a trusted deploy hostname when the socket is not loopback', async () => {
+    const list = vi.fn(async () => ({ root: '/w', entries: [] }))
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, { list } as never, { status: async () => null } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const result = await drive(prefix.handler, '/aionui-panel/list', {
+      remoteAddress: '192.168.1.20',
+      host: 'dsh.zcj123v.online',
+      body: JSON.stringify({ root: '/w', path: '' }),
+    })
+
+    expect(result.status).toBe(403)
+    expect(JSON.parse(result.body)).toEqual({ error: 'forbidden: loopback-only' })
+    expect(list).not.toHaveBeenCalled()
+  })
+
+  it('still 403s a cross-site request with a trusted Host and loopback socket', async () => {
+    const list = vi.fn(async () => ({ root: '/w', entries: [] }))
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, { list } as never, { status: async () => null } as never)
+    const prefix = registrations.find((row) => row.kind === 'prefix')!
+
+    const result = await drive(prefix.handler, '/aionui-panel/list', {
+      host: 'dsh.zcj123v.online',
+      secFetchSite: 'cross-site',
+      body: JSON.stringify({ root: '/w', path: '' }),
+    })
+
+    expect(result.status).toBe(403)
     expect(JSON.parse(result.body)).toEqual({ error: 'forbidden: loopback-only' })
     expect(list).not.toHaveBeenCalled()
   })

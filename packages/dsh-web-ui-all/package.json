@@ -1,7 +1,7 @@
 {
   "name": "@neystan/dsh-web-ui-all",
   "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / aionui-panel / describe-image / compat shim）+ 皮肤全家桶（dsh-skins，皮肤资产内置）。设置卡片使用 DSH rc.7 官方 keyed settings slot。",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

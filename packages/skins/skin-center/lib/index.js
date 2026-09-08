@@ -929,12 +929,23 @@ function requireSameOrigin(req, res) {
 	});
 	return false;
 }
+/**
+* 部署方域名入口（经 WG 内 OpenResty 反代 + SSH 隧道到达节点 loopback）。
+* 这些 Host 视同可信；本包无 socket 地址检查，仅放行 Host，
+* cross-site 拦截（requireSameOrigin）仍然生效。
+*/
+const TRUSTED_DEPLOY_HOSTNAMES = /* @__PURE__ */ new Set([
+	"dsh.zcj123v.online",
+	"dsh-mac.zcj123v.online",
+	"dsh-n7.zcj123v.online",
+	"dsh-n9.zcj123v.online"
+]);
 function isLoopbackRequest(req) {
 	const host = req.headers.host;
 	if (typeof host !== "string" || host === "") return false;
 	try {
 		const hostname = new URL(`http://${host}`).hostname.replace(/^\[|\]$/g, "").toLowerCase();
-		return hostname === "localhost" || hostname === "::1" || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+		return hostname === "localhost" || hostname === "::1" || /^127(?:\.\d{1,3}){3}$/.test(hostname) || TRUSTED_DEPLOY_HOSTNAMES.has(hostname);
 	} catch {
 		return false;
 	}

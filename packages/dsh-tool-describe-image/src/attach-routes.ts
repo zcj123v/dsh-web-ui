@@ -28,6 +28,49 @@ export interface AttachError {
   message: string
 }
 
+/**
+ * Loopback trust fence — the same judgment the family applies to its host
+ * routes: a loopback socket address AND a loopback Host header, plus browser
+ * same-origin markers. The attach route persists bytes into the attachment
+ * store, so a LAN-exposed dsh web must not serve it to unpaired devices.
+ * The socket address is authoritative; X-Forwarded-For is never trusted.
+ */
+
+/**
+ * 部署方域名入口（经 WG 内 OpenResty 反代 + SSH 隧道到达节点 loopback）。
+ * 这些 Host 视同可信；socket 地址检查与 sec-fetch-site 检查仍然生效，
+ * 只有 socket 确为 loopback 且请求非 cross-site 时才可能放行。
+ */
+const TRUSTED_DEPLOY_HOSTNAMES = new Set([
+  'dsh.zcj123v.online',
+  'dsh-mac.zcj123v.online',
+  'dsh-n7.zcj123v.online',
+  'dsh-n9.zcj123v.online',
+])
+
+export function isLoopbackRequest(request: IncomingMessage): boolean {
+  const address = request.socket?.remoteAddress
+  if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') return false
+  const host = request.headers.host
+  if (typeof host !== 'string') return false
+  let hostUrl: URL
+  try {
+    hostUrl = new URL(`http://${host}`)
+  } catch {
+    return false
+  }
+  if (hostUrl.hostname !== '127.0.0.1' && hostUrl.hostname !== 'localhost' && hostUrl.hostname !== '[::1]'
+    && !TRUSTED_DEPLOY_HOSTNAMES.has(hostUrl.hostname)) return false
+  if (request.headers['sec-fetch-site'] === 'cross-site') return false
+  const origin = request.headers.origin
+  if (origin === undefined) return true
+  try {
+    return new URL(origin).host === hostUrl.host
+  } catch {
+    return false
+  }
+}
+
 /** Validated upload payload. */
 export interface AttachPayload {
   /** Base64-encoded image bytes (standard alphabet). */
@@ -238,6 +281,13 @@ export function registerAttachRoute(ctx: Context, readMaxBytes: () => number = (
     kind: 'prefix',
     path: '/describe-image',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      // Loopback fence first: never let a LAN client reach the attach or raw
+      // routes, regardless of method or content-type.
+      if (!isLoopbackRequest(req)) {
+        res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ ok: false, error: { code: 'internal', message: 'forbidden: loopback-only' } }))
+        return
+      }
       // GET /describe-image/raw/<id>: serve the stored bytes so the
       // markdown image reference inserted into the draft renders. The id is
       // content-addressed and loopback-only, so a bare read carries no

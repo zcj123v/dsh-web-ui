@@ -224,10 +224,12 @@ describe('handleAttach', () => {
 })
 
 describe('registerAttachRoute', () => {
-  /** One async-iterable fake request carrying an optional body. */
+  /** One async-iterable fake request carrying an optional body (loopback by default). */
   const makeReq = (method: string, body?: string, url = '/describe-image/attach'): IncomingMessage => ({
     method,
     url,
+    headers: { host: '127.0.0.1:3000' },
+    socket: { remoteAddress: '127.0.0.1' },
     [Symbol.asyncIterator]: async function* () {
       if (body !== undefined) yield Buffer.from(body)
     },

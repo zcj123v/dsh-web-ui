@@ -122,4 +122,38 @@ describe('GET /aionui-panel/raw', () => {
     expect(result.headers['content-type']).toBe('application/json; charset=utf-8')
     expect(JSON.parse(result.body.toString('utf8'))).toEqual({ error: 'forbidden: loopback-only' })
   })
+
+  it('serves raw reads for a trusted deploy hostname over a loopback socket', async () => {
+    const dir = await realpath(await mkdtemp(join(tmpdir(), 'aionui-route-')))
+    const root = join(dir, 'proj')
+    await mkdir(root, { recursive: true })
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01])
+    await writeFile(join(root, 'pic.png'), png)
+    const gate: WorkspaceGate = async () => ({ ok: true, canonical: root })
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, new FsService(gate), { status: async () => null } as never)
+    const row = registrations.find((item) => item.kind === 'prefix')!
+
+    const result = await request(row.handler, 'GET', `/aionui-panel/raw?root=${encodeURIComponent(root)}&path=pic.png`, {
+      host: 'dsh-n7.zcj123v.online',
+    })
+    expect(result.status).toBe(200)
+    expect(result.body.equals(png)).toBe(true)
+
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('still 403s raw reads for a trusted deploy hostname from a non-loopback socket', async () => {
+    const gate: WorkspaceGate = async () => ({ ok: true, canonical: '/tmp/nope' })
+    const { ctx, registrations } = fakeCtx()
+    registerPanelRoutes(ctx as never, new FsService(gate), { status: async () => null } as never)
+    const row = registrations.find((item) => item.kind === 'prefix')!
+
+    const result = await request(row.handler, 'GET', '/aionui-panel/raw?root=%2Fw&path=a.png', {
+      remoteAddress: '192.168.1.20',
+      host: 'dsh-n7.zcj123v.online',
+    })
+    expect(result.status).toBe(403)
+    expect(JSON.parse(result.body.toString('utf8'))).toEqual({ error: 'forbidden: loopback-only' })
+  })
 })
