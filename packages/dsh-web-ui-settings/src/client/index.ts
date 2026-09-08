@@ -7,7 +7,7 @@
  * family plugin.
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the settings-surface SlotMap merge (the 'settings.section'
@@ -50,6 +50,9 @@ export interface SettingsPluginItemOwnerProps {
 
 /** Required services. */
 export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+
+/** Client-side Cordis context after declaration merging. */
+type ClientContext = Context
 
 /**
  * Register the Web UI plugin group.

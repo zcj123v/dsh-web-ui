@@ -12,7 +12,7 @@
  * @module @neystan/dsh-tool-describe-image/client
  */
 
-import type { ClientContext, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -44,6 +44,9 @@ export interface SettingsPluginItemOwnerProps {
 
 /** Locale namespace of the browser half. */
 export const NS = 'describe-image' as const
+
+/** Client-side Cordis context after declaration merging. */
+type ClientContext = Context
 
 /** Required services: slots for the settings card, conversation for the send hook, settings scope and locale for the card copy. */
 export const inject = ['slots', 'conversation', 'settingsScope', 'locale']

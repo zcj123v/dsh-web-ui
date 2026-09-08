@@ -28,7 +28,8 @@
  * @module dsh-git-graph/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-conversation SlotMap merge (the conversation
 // slots); the selector-context hole is spelled locally below because the
@@ -106,6 +107,9 @@ const NO_WORKSPACE: GitError = { code: 'workspace-unknown', message: 'session ha
  * shells that never declare the hole (rc.6) land on the dock after it.
  */
 export const CONTEXT_FALLBACK_MS = 2000
+
+/** Client-side Cordis context after declaration merging. */
+type ClientContext = Context
 
 /**
  * Client plugin body: the branch chip entry with its git verbs, on the

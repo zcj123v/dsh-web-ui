@@ -13,6 +13,7 @@ import { clientBundle } from '../../shared/tsdown.client.ts'
 export default clientBundle('@neystan/dsh-tool-describe-image', ['src/index.ts', 'src/invariant.ts'], {
   libExternal: [
     '@deepseek-ai/dsh-attachment',
+    '@deepseek-ai/dsh-client-store',
     '@deepseek-ai/dsh-credentials',
     '@deepseek-ai/dsh-launch-environment',
     '@deepseek-ai/dsh-settings',

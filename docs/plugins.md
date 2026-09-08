@@ -31,7 +31,7 @@ packages/<name>/
 
 - host 半区 `src/index.ts`：导出 cordis 插件，运行在 dsh host 进程（例如系统提示词公告、真实任务执行等）。
 - browser 半区 `src/client.ts`：Web GUI 侧的 UI 逻辑，经 package.json 的 `dsh.client` 声明注入运行时。
-- 形态参照 `packages/dsh-task-board/`：`dsh.bundle.patch` 指向包内 `cordis.patch.yml`；`dsh.client` 声明 `inject: ["@deepseek-ai/dsh-client-runtime"]` 与 `platform: "web"`。
+- 形态参照 `packages/dsh-task-board/`：`dsh.bundle.patch` 指向包内 `cordis.patch.yml`；`dsh.client` 声明 `inject: ["@deepseek-ai/dsh-client-store"]` 与 `platform: "web"`（rc.1 起 snapshot-store 运行时是平台种子模块 `@deepseek-ai/dsh-client-store`，不再有 `dsh-client-runtime/client`）。
 
 ### 3. 注册进聚合包
 

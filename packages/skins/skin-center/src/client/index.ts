@@ -6,7 +6,7 @@
  * copies the one-command apply. The plugin writes only DOM and the settings
  * ledger — no services, no events, no model access.
  */
-import type { ClientContext, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 import type { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -49,6 +49,9 @@ export interface SettingsPluginItemOwnerProps {
 
 /** Required services: slots + locale (plugin card), theme (preview toggle), and settingsScope + its transport (background scrim). */
 export const inject = ['slots', 'locale', 'theme', 'settingsScope', 'connection', 'remote']
+
+/** Client-side Cordis context after declaration merging. */
+type ClientContext = Context
 
 /**
  * Register the skin-center dictionaries, the body scope attribute, and the

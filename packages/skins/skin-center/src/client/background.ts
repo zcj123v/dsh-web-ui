@@ -1,6 +1,6 @@
 /** Settings-backed global background mode, scrim, and skin-art suppression. */
 
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   BACKGROUND_REVISION,
   normalizeBackgroundSettings,

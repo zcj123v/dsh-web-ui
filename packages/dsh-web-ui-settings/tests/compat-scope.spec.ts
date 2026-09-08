@@ -8,15 +8,15 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { createCompatScope } from '../src/client/compat-settings-scope.ts'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../src/protocol.ts'
 
-// The rc.6 runtime client bundle registers itself through the GUI module
-// loader, so importing its value under vitest yields no exports. Provide a
-// minimal snapshot store with the same contract (getSnapshot / subscribe /
+// The store package resolves through the GUI module loader at runtime, so
+// importing its value under vitest yields no exports. Provide a minimal
+// snapshot store with the same contract (getSnapshot / subscribe /
 // set / draft-style update) for the bridge controller and the fake primary.
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+vi.mock('@deepseek-ai/dsh-client-store', () => ({
   createSnapshotStore: <T>(initial: T) => {
     let snapshot = { ...initial }
     const listeners = new Set<() => void>()
@@ -43,7 +43,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
   },
 }))
 
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** A manual primary scope: a snapshot store plus recorded writes. */
 function fakePrimary<T>(initial: SettingsScopeSnapshot<T>) {
@@ -55,6 +55,7 @@ function fakePrimary<T>(initial: SettingsScopeSnapshot<T>) {
       subscribe: (listener: () => void) => store.subscribe(listener),
       set: async (field: string, value: unknown) => { sets.push([field, value]) },
       unset: async () => {},
+      mutate: async () => {},
     } satisfies SettingsScope<T>,
     update: (patch: Partial<SettingsScopeSnapshot<T>>) => { store.set({ ...store.getSnapshot(), ...patch }) },
     sets,

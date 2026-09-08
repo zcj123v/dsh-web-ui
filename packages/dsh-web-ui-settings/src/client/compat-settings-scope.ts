@@ -20,10 +20,11 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { WEB_UI_SETTINGS_BRIDGE_PREFIX } from '../protocol.ts'
-import type { BridgeDescribeResult, BridgeMutateRequest, BridgeMutateResult } from '../protocol.ts'
+import type { BridgeDescribeResult, BridgeMutateRequest, BridgeMutateResult, BridgeSettingsOp } from '../protocol.ts'
 
 /** True when the value is a well-formed bridge RPC result (the inner result payload the route answers). */
 function isBridgeResult(value: unknown): value is BridgeDescribeResult | BridgeMutateResult {
@@ -126,6 +127,17 @@ class BridgeScopeController<T> implements SettingsScope<T> {
     return this.enqueue(() => this.write({ op: 'unset', path: [field] }))
   }
 
+  /** Queue one path-addressed mutation (the rc.1 scope contract's atomic face). */
+  mutate(ops: readonly BridgeSettingsOp[], expectedRevision?: number): Promise<void> {
+    const revision = this.getSnapshot().revision
+    const opsCopy = ops.map(op => ({ ...op, path: [...op.path] }))
+    return this.enqueue(() => this.write({
+      op: 'mutate',
+      ops: opsCopy,
+      ...(expectedRevision === undefined && revision === undefined ? {} : { expectedRevision: expectedRevision ?? revision }),
+    }))
+  }
+
   /** Stop queued operations and wait for the current bridge call to settle. */
   async dispose(): Promise<void> {
     this.disposed = true
@@ -173,14 +185,16 @@ class BridgeScopeController<T> implements SettingsScope<T> {
     this.accept(view.value, view, writable)
   }
 
-  private async write(op: { op: 'set' | 'unset'; path: string[]; value?: unknown }): Promise<void> {
+  private async write(op: { op: 'mutate'; ops: BridgeSettingsOp[]; expectedRevision?: number } | { op: 'set' | 'unset'; path: string[]; value?: unknown }): Promise<void> {
     const revision = this.getSnapshot().revision
+    const ops = op.op === 'mutate' ? op.ops : [op]
+    const fence = op.op === 'mutate' && op.expectedRevision !== undefined ? op.expectedRevision : revision
     let response: { result: BridgeMutateResult }
     try {
       response = await this.api.settings.mutate({
         ns: this.spec.namespace,
-        ops: [op],
-        ...revision === undefined ? {} : { expectedRevision: revision },
+        ops,
+        ...fence === undefined ? {} : { expectedRevision: fence },
       })
     } catch {
       await this.read()
@@ -258,6 +272,7 @@ export function createCompatScope<T>(options: CompatScopeOptions<T>): SettingsSc
     subscribe: listener => store.subscribe(listener),
     set: (field, value) => active().set(field, value),
     unset: field => active().unset(field),
+    mutate: (ops, expectedRevision) => active().mutate(ops, expectedRevision),
     load: async () => {
       fallbackStarted = true
       await fallback?.load()

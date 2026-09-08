@@ -13,7 +13,8 @@
  * @module dsh-aionui-panel/client
  */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-conversation SlotMap merge (the input dock entry).
@@ -32,6 +33,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'aionui-panel': AionUiPanelKey
   }
 }
+
+/** Client-side Cordis context after declaration merging. */
+type ClientContext = Context
 
 /** Required services: sessions for the project root, locale for the copy. */
 export const inject = ['sessions', 'locale']

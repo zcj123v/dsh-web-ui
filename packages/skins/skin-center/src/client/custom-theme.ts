@@ -1,6 +1,6 @@
 /** Settings-backed inline theme layer for the official default surface. */
 
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   OFFICIAL_THEME_PRESETS,
   THEME_TOKEN_ALLOWLIST,
