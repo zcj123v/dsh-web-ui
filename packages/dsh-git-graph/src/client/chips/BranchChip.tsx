@@ -112,7 +112,20 @@ export function BranchChip(props: BranchChipProps) {
   // conversation with an open session. A still-loading blank session already
   // lists as blank in the session store, so it may enter the hero row before
   // the composer snapshot settles to `open`.
-  const heroSeat = sessionSnapshot?.composerPhase === 'blank' && (sessionSnapshot.openState === 'open' || blankSession === true)
+  //
+  // The shell's `ConversationSnapshot.activeTargets` half of its
+  // `conversationPhase()` derivation is unavailable to a plugin (the chip has
+  // no Conversation hook of its own, and a cross-plugin value import is
+  // rejected by the client-bundle purity gate), so the Session half is
+  // spelled here: a session that is blank, has not run a turn, is not
+  // running, and never attempted a prompt is the phase the shell classifies
+  // as blank.
+  const blankPhase = sessionSnapshot !== undefined
+    && sessionSnapshot.blank
+    && !sessionSnapshot.awaitingFirstTurn
+    && !sessionSnapshot.running
+    && !sessionSnapshot.promptAttempted
+  const heroSeat = blankPhase && (sessionSnapshot.openState === 'open' || blankSession === true)
 
   /** Repository state: undefined = loading, null = not a repository, else the snapshot. */
   const [repo, setRepo] = useState<RepoStatus | null | undefined>(undefined)

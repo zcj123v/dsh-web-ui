@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { AttachmentError, AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { CredentialProvider } from '@deepseek-ai/dsh-credentials'
-import type { CredentialInfo, CredentialRef, ResolvedCredential } from '@deepseek-ai/dsh-credentials'
+import type { CredentialInfo, CredentialKey, CredentialRecord, CredentialRecordEntry, CredentialRecordInfo, CredentialRef, ResolvedCredential } from '@deepseek-ai/dsh-credentials'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 
@@ -25,6 +25,7 @@ class FakeAttachments extends AttachmentStore {
       maxImagesPerMessage: 5,
       maxMessageImageBytes: 20_000_000,
       maxImagePixels: 10_000_000,
+      maxImageDimension: 8192,
       mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
     }
   }
@@ -59,6 +60,7 @@ class FakeAttachments extends AttachmentStore {
 /** In-memory credential provider so key resolution through the seam is observable. */
 class FakeCredentials extends CredentialProvider {
   private readonly values: Map<string, string>
+  private readonly records = new Map<CredentialKey, CredentialRecord>()
   constructor(ctx: Context, seed: Record<string, string> = {}) {
     super(ctx)
     this.values = new Map(Object.entries(seed))
@@ -81,6 +83,39 @@ class FakeCredentials extends CredentialProvider {
 
   unset(ref: CredentialRef): Promise<void> {
     this.values.delete(ref)
+    return Promise.resolve()
+  }
+
+  // Record half: the plugin resolves references only, so these stay minimal
+  // in-memory implementations of the seam's storage face.
+  readRecord(key: CredentialKey): Promise<CredentialRecord | undefined> {
+    return Promise.resolve(this.records.get(key))
+  }
+
+  describeRecord(key: CredentialKey): Promise<CredentialRecordInfo> {
+    const record = this.records.get(key)
+    return Promise.resolve({
+      configured: record !== undefined,
+      writable: true,
+      ...record === undefined ? {} : { kind: record.kind },
+    })
+  }
+
+  listRecords(): Promise<readonly CredentialRecordEntry[]> {
+    return Promise.resolve([...this.records].map(([key, record]) => ({ key, kind: record.kind })))
+  }
+
+  async modifyRecord(
+    key: CredentialKey,
+    mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
+  ): Promise<CredentialRecord | undefined> {
+    const next = await mutate(this.records.get(key))
+    if (next !== undefined) this.records.set(key, next)
+    return next ?? this.records.get(key)
+  }
+
+  deleteRecord(key: CredentialKey): Promise<void> {
+    this.records.delete(key)
     return Promise.resolve()
   }
 }
@@ -120,7 +155,7 @@ async function tempPng(): Promise<string> {
 function callDescribe(ctx: Context, args: unknown, signal?: AbortSignal) {
   return ctx.tools.execute({
     signal: signal ?? new AbortController().signal,
-    callId: CallId('vision-call'),
+    callId: ToolCallId('vision-call'),
     name: 'describe_image',
     arguments: args,
   })
@@ -507,7 +542,7 @@ describe('attachment references', () => {
 
     const result = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('bare-id-attachment'),
+      callId: ToolCallId('bare-id-attachment'),
       name: 'describe_image',
       arguments: { image: `sha256:${'a'.repeat(64)}` },
     })

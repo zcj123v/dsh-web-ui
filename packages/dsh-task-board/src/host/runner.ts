@@ -399,7 +399,7 @@ export class TaskRunner {
       }))
       await handle.agent.whenIdle()
 
-      const reason = lastTurnEndReason(handle.agent.session.events)
+      const reason = lastTurnEndReason(handle.agent.session.snapshotEvents())
       // The session stays mounted (per-task stable session); only the run
       // outcome is reported. The caller settles the execution record.
       if (reason === undefined) {

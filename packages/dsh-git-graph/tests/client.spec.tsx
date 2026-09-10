@@ -57,8 +57,8 @@ interface BenchOptions {
   graphView?: GraphView | null
   /** Override the graph verb (e.g. a deferred promise for the loading state). */
   graph?: (limit?: number) => Promise<GraphView | null>
-  /** The dock seat's conversation composer phase (blank = the hero phase). */
-  composerPhase?: 'blank' | 'active'
+  /** The dock seat's session phase (blank = the hero phase). */
+  sessionPhase?: 'blank' | 'active'
   /** The dock seat's conversation open state (open = the hero phase). */
   openState?: 'open' | 'loading'
   /** Render into this element instead of the RTL default container. */
@@ -135,7 +135,12 @@ function bench(options: BenchOptions = {}, seat: BenchSeat = 'context') {
       ...commonProps,
       sessionId,
       session: {
-        composerPhase: options.composerPhase ?? 'active',
+        // The chip reads the blank phase off the Session snapshot itself (the
+        // shell's `conversationPhase()` blank branch).
+        blank: options.sessionPhase === 'blank',
+        awaitingFirstTurn: false,
+        running: false,
+        promptAttempted: false,
         openState: options.openState ?? 'open',
       } as never,
       input: {} as never,
@@ -218,7 +223,7 @@ describe('BranchChip', () => {
   })
 
   it('styles the dock chip with the official hero seat in the blank phase', async () => {
-    bench({ composerPhase: 'blank', openState: 'open' }, 'dock')
+    bench({ sessionPhase: 'blank', openState: 'open' }, 'dock')
     const branchChip = await screen.findByRole('button', { name: '分支' })
     const chipWrap = branchChip.parentElement as HTMLElement
     expect(chipWrap.className).toContain('chipWrap')
@@ -233,7 +238,7 @@ describe('BranchChip', () => {
   })
 
   it('enters the hero seat while a blank session composer is still loading', async () => {
-    bench({ blank: true, composerPhase: 'blank', openState: 'loading' }, 'dock')
+    bench({ blank: true, sessionPhase: 'blank', openState: 'loading' }, 'dock')
     const branchChip = await screen.findByRole('button', { name: '分支' })
     const anchor = anchorOf(branchChip)
     expect(anchor.className).toContain('anchorHero')
@@ -251,7 +256,7 @@ describe('BranchChip', () => {
     stack.append(heroRow, outlet)
     document.body.append(stack)
     try {
-      bench({ composerPhase: 'blank', openState: 'open', container: outlet }, 'dock')
+      bench({ sessionPhase: 'blank', openState: 'open', container: outlet }, 'dock')
       const chip = await screen.findByRole('button', { name: '分支' })
       const anchor = anchorOf(chip)
 

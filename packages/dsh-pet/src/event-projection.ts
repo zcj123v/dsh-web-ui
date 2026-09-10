@@ -6,6 +6,8 @@
  * @module @neystan/dsh-pet/event-projection
  */
 
+import { assistantStreamHasVisibleText } from '@deepseek-ai/dsh-llm'
+import type { AssistantStreamRecord } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { PetStateInput } from './state.ts'
 
@@ -46,8 +48,28 @@ export function isActivityPhase(phase: string): phase is PetStateInput['phase'] 
 }
 
 /**
+ * Whether one settled attempt stream carries reasoning text. 0.1.5 removed the
+ * live `assistant/chunk` event, so a reasoning run is only observable after
+ * settlement, through the compact stream the attempt embeds.
+ */
+function streamHasReasoningText(stream: readonly AssistantStreamRecord[]): boolean {
+  return stream.some(record => record.type === 'reasoning-chunks'
+    && record.texts.some(text => text.trim() !== ''))
+}
+
+/**
  * Project the durable DSH session vocabulary into the pet's visual phases.
  * Unknown and log-only events do not disturb the last meaningful activity.
+ *
+ * 0.1.5 dropped `assistant/chunk`: deltas no longer reach the session log as
+ * live events, so the streamed phases are read off the compact stream a
+ * settled attempt or message embeds instead. An attempt that committed no
+ * surface message keeps both streamed phases (reasoning-only streams are the
+ * `thinking` run, text-bearing ones the `review` run, and an empty stream
+ * projects nothing); a committed message keeps its unconditional `review`.
+ * The trade-off is granularity: a successful step's reasoning prefix no
+ * longer flashes `thinking` before the answer, because the whole stream now
+ * arrives in one event.
  */
 export function projectOfficialEvent(
   event: SessionEvent,
@@ -62,16 +84,14 @@ export function projectOfficialEvent(
       runtime.activeTools.clear()
       runtime.stepHadFailure = false
       return { input: { phase: 'waiting', line: '等待模型响应' } }
-    case 'assistant/chunk': {
-      const { chunk } = event.data
-      if (chunk.type === 'reasoning-delta' && chunk.text.length > 0) {
-        return { input: { phase: 'thinking', line: '正在思考' } }
-      }
-      if (chunk.type === 'text-delta' && chunk.text.length > 0) {
+    case 'assistant/attempt':
+      if (assistantStreamHasVisibleText(event.data.stream)) {
         return { input: { phase: 'review', line: '整理回复中' } }
       }
+      if (streamHasReasoningText(event.data.stream)) {
+        return { input: { phase: 'thinking', line: '正在思考' } }
+      }
       return undefined
-    }
     case 'assistant/message':
       return { input: { phase: 'review', line: '整理回复中' } }
     case 'tool/call':

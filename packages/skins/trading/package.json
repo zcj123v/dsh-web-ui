@@ -1,7 +1,7 @@
 {
   "name": "@neystan/dsh-client-ui-skin-trading",
   "description": "Hot-pluggable stock-trading skin for the dsh web GUI: live ticker tape, longbridge/fun-ticker quote feeds, market-session status bar",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -35,8 +35,8 @@
     "tsdown": "^0.22.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8",
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6"
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.5-rc.1"
   },
   "files": [
     "lib",

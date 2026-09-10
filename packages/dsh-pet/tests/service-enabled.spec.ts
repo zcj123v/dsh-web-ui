@@ -3,6 +3,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import type { AssistantStreamRecord } from '@deepseek-ai/dsh-llm'
+import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
 import { loadPetPersist } from '../src/persist.ts'
 import { PetService } from '../src/service.ts'
@@ -20,7 +22,6 @@ declare module '@deepseek-ai/dsh-session' {
   }
 }
 
-type AssistantChunk = SessionEvent<'assistant/chunk'>['data']['chunk']
 type AssistantMessage = SessionEvent<'assistant/message'>['data']['message']
 type ToolCallId = SessionEvent<'tool/call'>['data']['callId']
 type ToolResultMessage = SessionEvent<'tool/result'>['data']['message']
@@ -38,21 +39,36 @@ function messageId(value: string): ToolResultMessage['id'] {
   return value as ToolResultMessage['id']
 }
 
+/** One packed reasoning run, the settled form of a `reasoning-delta` sequence. */
+function reasoningStream(texts: readonly string[]): AssistantStreamRecord[] {
+  return [{ type: 'reasoning-chunks', time0: 0, index: 0, dt: [], texts }]
+}
+
+/** One packed text run, the settled form of a `text-delta` sequence. */
+function textStream(texts: readonly string[]): AssistantStreamRecord[] {
+  return [{ type: 'text-chunks', time0: 0, index: 0, dt: [], texts }]
+}
+
 function turnStart(turn: number, seq: number): SessionEvent<'turn/start'> {
-  return { type: 'turn/start', seq, time: seq, data: { turn } }
+  return { type: 'turn/start', seq: SessionSeq(seq), time: seq, data: { turn } }
 }
 
 function stepStart(turn: number, step: number, seq: number): SessionEvent<'step/start'> {
-  return { type: 'step/start', seq, time: seq, data: { turn, step } }
+  return { type: 'step/start', seq: SessionSeq(seq), time: seq, data: { turn, step } }
 }
 
-function assistantChunk(
+/**
+ * One model attempt that committed no surface message (failed, retried, or
+ * cancelled). 0.1.5 carries the settled stream instead of live
+ * `assistant/chunk` deltas.
+ */
+function assistantAttempt(
   turn: number,
   step: number,
-  chunk: AssistantChunk,
+  stream: AssistantStreamRecord[],
   seq: number,
-): SessionEvent<'assistant/chunk'> {
-  return { type: 'assistant/chunk', seq, time: seq, data: { turn, step, chunk } }
+): SessionEvent<'assistant/attempt'> {
+  return { type: 'assistant/attempt', seq: SessionSeq(seq), time: seq, data: { turn, step, stream } }
 }
 
 function assistantMessage(
@@ -67,7 +83,13 @@ function assistantMessage(
     source: { kind: 'model', provider: 'mock', model: 'mock' },
     content: [{ type: 'text', text }],
   }
-  return { type: 'assistant/message', seq, time: seq, data: { turn, step, message } }
+  return {
+    type: 'assistant/message',
+    seq: SessionSeq(seq),
+    time: seq,
+    surfaceOp: 'append',
+    data: { turn, step, message, stream: textStream([text]) },
+  }
 }
 
 function toolCall(
@@ -79,7 +101,7 @@ function toolCall(
 ): SessionEvent<'tool/call'> {
   return {
     type: 'tool/call',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
     data: { turn, step, callId: callId(id), name, arguments: '{}' },
   }
@@ -96,8 +118,9 @@ function toolResult(
   const correlatedId = callId(id)
   return {
     type: 'tool/result',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
+    surfaceOp: 'append',
     data: {
       turn,
       step,
@@ -122,7 +145,7 @@ function turnEnd(
   reason: TurnEndReason,
   seq: number,
 ): SessionEvent<'turn/end'> {
-  return { type: 'turn/end', seq, time: seq, data: { turn, reason } }
+  return { type: 'turn/end', seq: SessionSeq(seq), time: seq, data: { turn, reason } }
 }
 
 function activity(
@@ -132,7 +155,7 @@ function activity(
 ): SessionEvent<'activity/status'> {
   return {
     type: 'activity/status',
-    seq,
+    seq: SessionSeq(seq),
     time: seq,
     data: { phase, ...(line === undefined ? {} : { line }) },
   }
@@ -181,17 +204,13 @@ describe('PetService (rc.6 session events)', () => {
       ctx.emit('session/event', session, stepStart(1, 1, 2))
       expect(await service.state()).toMatchObject({ animation: 'waiting', bubble: '等待模型响应' })
 
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
-        type: 'reasoning-delta', index: 0, text: '分析',
-      }, 3))
+      ctx.emit('session/event', session, assistantAttempt(1, 1, reasoningStream(['分析']), 3))
       expect(await service.state()).toMatchObject({ animation: 'running', bubble: '正在思考' })
 
       ctx.emit('session/event', session, assistantMessage(1, 1, '完整回复', 4))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
 
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
-        type: 'text-delta', index: 0, text: '回答',
-      }, 5))
+      ctx.emit('session/event', session, assistantAttempt(1, 1, textStream(['回答']), 5))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
 
       ctx.emit('session/event', session, toolCall(1, 1, 'call-1', 'shell', 6))
@@ -254,9 +273,7 @@ describe('PetService (rc.6 session events)', () => {
     try {
       const service = new PetService(ctx, { persistDir: dir })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
-        type: 'reasoning-delta', index: 0, text: 'A',
-      }, 1))
+      ctx.emit('session/event', sessionA, assistantAttempt(1, 1, reasoningStream(['A']), 1))
       expect(await service.state()).toMatchObject({ animation: 'running', bubble: '正在思考' })
 
       ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 1))
@@ -265,18 +282,14 @@ describe('PetService (rc.6 session events)', () => {
         bubble: '正在使用 search',
       })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
-        type: 'text-delta', index: 0, text: 'A',
-      }, 2))
+      ctx.emit('session/event', sessionA, assistantAttempt(1, 1, textStream(['A']), 2))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
 
       ctx.emit('session/event', sessionB, turnEnd(1, { kind: 'completed' }, 2))
       expect(await service.state()).toMatchObject({ animation: 'jumping', bubble: '完成啦' })
       expect((await service.state()).affinity.turns).toBe(1)
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
-        type: 'text-delta', index: 0, text: 'A2',
-      }, 3))
+      ctx.emit('session/event', sessionA, assistantAttempt(1, 1, textStream(['A2']), 3))
       ctx.emit('session/disposed', sessionB)
       expect(await service.state()).toMatchObject({
         animation: 'review',

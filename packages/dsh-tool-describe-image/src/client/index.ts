@@ -13,6 +13,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+// Type-only: pulls the renderer-owned slot registry Context merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'

@@ -23,8 +23,9 @@
  * session is active and renders on the dock's own row above the composer
  * card, left-aligned with the input card. Revision 0be6546 moved the chip
  * back to the context hole without a fallback, so on rc.6 shells the inject
- * wait never resolved and the chip disappeared. The published npm SDK (rc.6)
- * dropped the hole's type, so it is spelled locally below.
+ * wait never resolved and the chip disappeared. The published npm SDK
+ * (0.1.5-rc.1) still does not declare the hole's type, so it is spelled
+ * locally below.
  * @module dsh-git-graph/client
  */
 
@@ -33,9 +34,17 @@ import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-conversation SlotMap merge (the conversation
 // slots); the selector-context hole is spelled locally below because the
-// published npm SDK (rc.6) dropped it while the running shell still renders it.
+// published npm SDK (0.1.5-rc.1) does not declare it while the running shell
+// still renders it.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls the renderer-owned slot registry Context merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+// Type-only: pulls the client sessions-service Context merge (ctx.sessions).
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+// Type-only: pulls the ui-session standard-props merge (useSessions / sessionId
+// on session and session-maybe slots).
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {
   BranchesView, GitError, GraphView, RepoStatus, SwitchResult,
 } from '../core/types.ts'
@@ -60,9 +69,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * themselves when their data source is absent.
      *
      * Declared and rendered by the running dsh web shell
-     * (ui-conversation's InputSelectorRow); the published npm SDK (rc.6)
-     * dropped this hole, so it is spelled locally to keep the chip's
-     * registration type-checked without depending on the sibling SDK surface.
+     * (ui-conversation's InputSelectorRow); the published npm SDK
+     * (0.1.5-rc.1) does not declare this hole, so it is spelled locally to
+     * keep the chip's registration type-checked without depending on the
+     * sibling SDK surface.
      */
     'conversation.input.selector.context': {
       kind: 'list'
